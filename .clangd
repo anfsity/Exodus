@@ -1,0 +1,5 @@
+# .clangd
+CompileFlags:
+  CompilationDatabase: build
+InlayHints:
+  Designators: No
