@@ -1,0 +1,131 @@
+// include/type.hpp
+#pragma once
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace exodus {
+
+// 虽然 function
+// 不是一等公民，但是如果把函数作为类型，我们可以统一符号表的逻辑。这样写起来代码会很清爽
+enum class Kind { I32, F32, Ptr, Array, Bool, Void, Func };
+
+struct Type : std::enable_shared_from_this<Type> {
+  Kind kind;
+  Type(Kind kind_) : kind(kind_) {}
+  virtual ~Type() = default;
+  virtual auto is_i32() const -> bool { return kind == Kind::I32; };
+  virtual auto is_f32() const -> bool { return kind == Kind::F32; };
+  virtual auto is_ptr() const -> bool { return kind == Kind::Ptr; };
+  virtual auto is_array() const -> bool { return kind == Kind::Array; };
+  virtual auto is_bool() const -> bool { return kind == Kind::Bool; };
+  virtual auto is_void() const -> bool { return kind == Kind::Void; };
+  virtual auto is_func() const -> bool { return kind == Kind::Func; };
+
+  auto ptr_to() -> std::shared_ptr<Type>;
+  auto array_of(int n) -> std::shared_ptr<Type>;
+};
+
+struct I32 : Type {
+  I32() : Type(Kind::I32) {}
+
+  static auto get() -> std::shared_ptr<Type> {
+    static auto inst = std::make_shared<I32>();
+    return inst;
+  }
+};
+
+struct Float : Type {
+  Float() : Type(Kind::F32) {}
+
+  static auto get() -> std::shared_ptr<Type> {
+    static auto inst = std::make_shared<Float>();
+    return inst;
+  }
+};
+
+struct Void : Type {
+  Void() : Type(Kind::Void) {}
+
+  static auto get() -> std::shared_ptr<Type> {
+    static auto inst = std::make_shared<Void>();
+    return inst;
+  }
+};
+
+struct Bool : Type {
+  Bool() : Type(Kind::Bool) {}
+
+  static auto get() -> std::shared_ptr<Type> {
+    static auto inst = std::make_shared<Bool>();
+    return inst;
+  }
+};
+
+struct Func : Type {
+  std::shared_ptr<Type> ret_type;
+  std::vector<std::shared_ptr<Type>> params;
+
+  Func(std::shared_ptr<Type> ret, std::vector<std::shared_ptr<Type>> _params)
+      : Type(Kind::Func), ret_type(std::move(ret)), params(std::move(_params)) {
+  }
+
+  static auto get(std::shared_ptr<Type> ret,
+                  std::vector<std::shared_ptr<Type>> _params)
+      -> std::shared_ptr<Type> {
+    static std::map<std::pair<Type *, std::vector<std::shared_ptr<Type>>>,
+                    std::shared_ptr<Type>>
+        cache;
+    auto key = std::make_pair(ret.get(), _params);
+    if (cache.contains(key)) {
+      return cache[key];
+    }
+    return cache[key] = std::make_shared<Func>(ret, _params);
+  }
+};
+
+struct Ptr : Type {
+  std::shared_ptr<Type> target;
+
+  Ptr(std::shared_ptr<Type> _target)
+      : Type(Kind::Ptr), target(std::move(_target)) {}
+
+  static auto get(std::shared_ptr<Type> _target) -> std::shared_ptr<Type> {
+    static std::map<Type *, std::shared_ptr<Type>> cache;
+    auto key = _target.get();
+    if (cache.contains(key)) {
+      return cache[key];
+    }
+    return cache[key] = std::make_shared<Ptr>(_target);
+  }
+};
+
+struct Array : Type {
+  std::shared_ptr<Type> base;
+  int len;
+
+  Array(std::shared_ptr<Type> _target, int _len)
+      : Type(Kind::Array), base(std::move(_target)), len(_len) {}
+
+  static auto get(std::shared_ptr<Type> _base, int _len)
+      -> std::shared_ptr<Type> {
+    static std::map<std::pair<Type *, int>, std::shared_ptr<Array>> cache;
+    auto key = std::make_pair(_base.get(), _len);
+    if (cache.contains(key)) {
+      return cache[key];
+    }
+    return cache[key] = std::make_shared<Array>(_base, _len);
+  }
+};
+
+inline auto Type::ptr_to() -> std::shared_ptr<Type> {
+  return Ptr::get(shared_from_this());
+}
+
+inline auto Type::array_of(int n) -> std::shared_ptr<Type> {
+  return Array::get(shared_from_this(), n);
+}
+
+} // namespace exodus
