@@ -14,7 +14,7 @@
 #include <stacktrace>
 #include <type_traits>
 
-namespace Log {
+namespace exodus::Log {
 
 enum class level { Info, Warn, Error, Fatal };
 
@@ -133,7 +133,7 @@ void with_exception_handling(Func &&func, const std::source_location &loc =
 
 #else
 
-namespace Log {
+namespace exodus::Log {
 
 #define log_info(fmt_str, ...)
 #define log_warn(fmt_str, ...)
