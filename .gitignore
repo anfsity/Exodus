@@ -20,6 +20,7 @@
 !*.pdf
 !*.zip
 !.clangd
+!.clang-format
 
 .git/
 .vscode/
