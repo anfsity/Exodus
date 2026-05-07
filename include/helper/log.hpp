@@ -24,11 +24,19 @@ class logger {
 public:
   template <typename... Args>
     requires(sizeof...(Args) >= 0)
-  static void output(level lvl, const std::source_location &loc,
-                     fmt::format_string<Args...> fmt_str, Args &&...args) {
+  static void output(
+    level lvl,
+    const std::source_location &loc,
+    fmt::format_string<Args...> fmt_str,
+    Args &&...args
+  ) {
 
-    fmt::print(fg(fmt::terminal_color::bright_black), "{}:{} ", loc.file_name(),
-               loc.line());
+    fmt::print(
+      fg(fmt::terminal_color::bright_black),
+      "{}:{} ",
+      loc.file_name(),
+      loc.line()
+    );
 
     fmt::print(fg(get_color(lvl)), "[{}] ", get_level_name(lvl));
     fmt::print(fmt_str, std::forward<Args>(args)...);
@@ -69,11 +77,12 @@ private:
 class exception : public std::exception {
 public:
   exception(std::string msg) : msg_(std::move(msg)) {
-    trace_ += fmt::format(fg(fmt::terminal_color::bright_black),
-                          "--- stack trace ---\n");
+    trace_ += fmt::format(
+      fg(fmt::terminal_color::bright_black), "--- stack trace ---\n"
+    );
     capture_stack();
-    trace_ += fmt::format(fg(fmt::terminal_color::bright_black),
-                          "--- stack end ---\n");
+    trace_ +=
+      fmt::format(fg(fmt::terminal_color::bright_black), "--- stack end ---\n");
   }
 
   const char *what() const noexcept override { return msg_.c_str(); }
@@ -88,8 +97,13 @@ private:
       const auto &e = trace[i];
       if (e.description().empty())
         continue;
-      trace_ += fmt::format("  #{} {} at {}:{}\n", cnt++, e.description(),
-                            e.source_file(), e.source_line());
+      trace_ += fmt::format(
+        "  #{} {} at {}:{}\n",
+        cnt++,
+        e.description(),
+        e.source_file(),
+        e.source_line()
+      );
     }
   }
 
@@ -98,8 +112,9 @@ private:
 };
 
 template <typename Func>
-void with_exception_handling(Func &&func, const std::source_location &loc =
-                                              std::source_location::current()) {
+void with_exception_handling(
+  Func &&func, const std::source_location &loc = std::source_location::current()
+) {
   try {
     func();
   } catch (const exception &e) {
@@ -114,22 +129,26 @@ void with_exception_handling(Func &&func, const std::source_location &loc =
 }
 
 #define log_info(fmt_str, ...)                                                 \
-  logger::output(level::Info, std::source_location::current(), fmt_str,        \
-                 ##__VA_ARGS__)
+  logger::output(                                                              \
+    level::Info, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+  )
 
 #define log_warn(fmt_str, ...)                                                 \
-  logger::output(level::Warn, std::source_location::current(), fmt_str,        \
-                 ##__VA_ARGS__)
+  logger::output(                                                              \
+    level::Warn, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+  )
 
 #define log_error(fmt_str, ...)                                                \
-  logger::output(level::Error, std::source_location::current(), fmt_str,       \
-                 ##__VA_ARGS__)
+  logger::output(                                                              \
+    level::Error, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
+  )
 
 #define log_fatal(fmt_str, ...)                                                \
-  logger::output(level::Fatal, std::source_location::current(), fmt_str,       \
-                 ##__VA_ARGS__)
+  logger::output(                                                              \
+    level::Fatal, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
+  )
 
-} // namespace Log
+} // namespace exodus::Log
 
 #else
 
@@ -141,6 +160,6 @@ namespace exodus::Log {
 #define log_fatal(fmt_str, ...)
 #define with_exception_handling(...)
 
-} // namespace Log
+} // namespace exodus::Log
 
 #endif

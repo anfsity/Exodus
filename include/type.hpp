@@ -72,12 +72,13 @@ struct Func : Type {
       : Type(Kind::Func), ret_type(std::move(ret)), params(std::move(_params)) {
   }
 
-  static auto get(std::shared_ptr<Type> ret,
-                  std::vector<std::shared_ptr<Type>> _params)
-      -> std::shared_ptr<Type> {
-    static std::map<std::pair<Type *, std::vector<std::shared_ptr<Type>>>,
-                    std::shared_ptr<Type>>
-        cache;
+  static auto
+  get(std::shared_ptr<Type> ret, std::vector<std::shared_ptr<Type>> _params)
+    -> std::shared_ptr<Type> {
+    static std::map<
+      std::pair<Type *, std::vector<std::shared_ptr<Type>>>,
+      std::shared_ptr<Type>>
+      cache;
     auto key = std::make_pair(ret.get(), _params);
     if (cache.contains(key)) {
       return cache[key];
@@ -95,7 +96,7 @@ struct Ptr : Type {
   static auto get(std::shared_ptr<Type> _target) -> std::shared_ptr<Type> {
     static std::map<Type *, std::shared_ptr<Type>> cache;
     auto key = _target.get();
-    if (cache.contains(key)) {
+    if (cache.find(key) != cache.end()) {
       return cache[key];
     }
     return cache[key] = std::make_shared<Ptr>(_target);
@@ -110,10 +111,11 @@ struct Array : Type {
       : Type(Kind::Array), base(std::move(_target)), len(_len) {}
 
   static auto get(std::shared_ptr<Type> _base, int _len)
-      -> std::shared_ptr<Type> {
+    -> std::shared_ptr<Type> {
     static std::map<std::pair<Type *, int>, std::shared_ptr<Array>> cache;
     auto key = std::make_pair(_base.get(), _len);
-    if (cache.contains(key)) {
+
+    if (cache.find(key) != cache.end()) {
       return cache[key];
     }
     return cache[key] = std::make_shared<Array>(_base, _len);

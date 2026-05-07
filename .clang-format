@@ -1,0 +1,14 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 80
+
+AlignAfterOpenBracket: BlockIndent
+AlwaysBreakTemplateDeclarations: Yes
+
+BinPackArguments: false
+BinPackParameters: false
+
+IndentWidth: 2
+ContinuationIndentWidth: 2
