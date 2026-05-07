@@ -40,6 +40,11 @@ struct CallExprAST : Sourcelocation, Typed {
   CallExprAST(std::string n, std::vector<Expr> a);
 };
 
+struct InitListAST : Sourcelocation {
+  std::vector<InitVal> values;
+  InitListAST(std::vector<InitVal> v);
+};
+
 // --- Stmt ---
 
 struct ExprStmtAST : Sourcelocation {
@@ -90,31 +95,35 @@ struct ReturnStmtAST : Sourcelocation {
 struct VarDefAST : Sourcelocation {
   std::string name;
   std::vector<Expr> dims;
-  std::optional<Expr> init;
-  VarDefAST(std::string n, std::vector<Expr> d, std::optional<Expr> i);
+  std::optional<InitVal> init;
+  VarDefAST(std::string n, std::vector<Expr> d, std::optional<InitVal> i);
 };
 
 struct VarDeclAST : Sourcelocation {
-  std::string btype;
+  std::shared_ptr<Type> type;
   std::vector<std::unique_ptr<VarDefAST>> defs;
   bool is_const;
-  VarDeclAST(std::string b, std::vector<std::unique_ptr<VarDefAST>> d, bool c);
+  VarDeclAST(
+    std::shared_ptr<Type> t,
+    std::vector<std::unique_ptr<VarDefAST>> d,
+    bool c
+  );
 };
 
 struct FuncParamAST : Sourcelocation {
-  std::string btype;
+  std::shared_ptr<Type> type;
   std::string name;
   std::vector<Expr> dims;
-  FuncParamAST(std::string b, std::string n, std::vector<Expr> d);
+  FuncParamAST(std::shared_ptr<Type> t, std::string n, std::vector<Expr> d);
 };
 
 struct FuncDefAST : Sourcelocation {
-  std::string btype;
+  std::shared_ptr<Type> ret_type;
   std::string name;
   std::vector<std::unique_ptr<FuncParamAST>> params;
   std::unique_ptr<BlockSAST> body;
   FuncDefAST(
-    std::string b,
+    std::shared_ptr<Type> ret,
     std::string n,
     std::vector<std::unique_ptr<FuncParamAST>> p,
     std::unique_ptr<BlockSAST> bd
@@ -136,6 +145,9 @@ inline UnaryExprAST::UnaryExprAST(UnaryOp o, Expr e)
 
 inline CallExprAST::CallExprAST(std::string n, std::vector<Expr> a)
     : name(std::move(n)), args(std::move(a)) {}
+
+inline InitListAST::InitListAST(std::vector<InitVal> v)
+    : values(std::move(v)) {}
 
 inline ExprStmtAST::ExprStmtAST() : expr(std::nullopt) {}
 inline ExprStmtAST::ExprStmtAST(Expr e) : expr(std::move(e)) {}
@@ -159,27 +171,27 @@ inline ReturnStmtAST::ReturnStmtAST(std::optional<Expr> e)
     : expr(std::move(e)) {}
 
 inline VarDefAST::VarDefAST(
-  std::string n, std::vector<Expr> d, std::optional<Expr> i
+  std::string n, std::vector<Expr> d, std::optional<InitVal> i
 )
     : name(std::move(n)), dims(std::move(d)), init(std::move(i)) {}
 
 inline VarDeclAST::VarDeclAST(
-  std::string b, std::vector<std::unique_ptr<VarDefAST>> d, bool c
+  std::shared_ptr<Type> t, std::vector<std::unique_ptr<VarDefAST>> d, bool c
 )
-    : btype(std::move(b)), defs(std::move(d)), is_const(c) {}
+    : type(std::move(t)), defs(std::move(d)), is_const(c) {}
 
 inline FuncParamAST::FuncParamAST(
-  std::string b, std::string n, std::vector<Expr> d
+  std::shared_ptr<Type> t, std::string n, std::vector<Expr> d
 )
-    : btype(std::move(b)), name(std::move(n)), dims(std::move(d)) {}
+    : type(std::move(t)), name(std::move(n)), dims(std::move(d)) {}
 
 inline FuncDefAST::FuncDefAST(
-  std::string b,
+  std::shared_ptr<Type> ret,
   std::string n,
   std::vector<std::unique_ptr<FuncParamAST>> p,
   std::unique_ptr<BlockSAST> bd
 )
-    : btype(std::move(b)), name(std::move(n)), params(std::move(p)),
+    : ret_type(std::move(ret)), name(std::move(n)), params(std::move(p)),
       body(std::move(bd)) {}
 
 } // namespace exodus::ast

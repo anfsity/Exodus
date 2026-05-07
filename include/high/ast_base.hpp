@@ -3,7 +3,9 @@
 
 #include "type.hpp"
 #include <memory>
+#include <string>
 #include <variant>
+#include <vector>
 
 namespace exodus::ast {
 
@@ -50,6 +52,7 @@ struct LvalAST;
 struct BinaryExprAST;
 struct UnaryExprAST;
 struct CallExprAST;
+struct InitListAST;
 
 struct IfStmtAST;
 struct WhileStmtAST;
@@ -85,9 +88,14 @@ using Stmt = std::variant<
   std::unique_ptr<BlockSAST>,
   std::unique_ptr<ExprStmtAST>>;
 
-using Decl =
-  std::variant<std::unique_ptr<VarDeclAST>, std::unique_ptr<FuncDefAST>>;
+using Decl = std::unique_ptr<VarDeclAST>;
 
+using InitVal = std::variant<Expr, std::unique_ptr<InitListAST>>;
 using BlockItem = std::variant<Decl, Stmt>;
+using GlobalItem = std::variant<Decl, std::unique_ptr<FuncDefAST>>;
+struct CompUnitAST {
+  std::vector<GlobalItem> items;
+  std::string source_file; //< for meta data, such that file name, target arch.
+};
 
 } // namespace exodus::ast
