@@ -10,15 +10,33 @@
 %option noyywrap
 %option nounput
 %option noinput
+%option yylineno
 
 %{
 #include <string>
 #include <cstdlib>
 #include "sysy.tab.hpp"
+
+static int yycolumn = 1;
+
+#define YY_USER_ACTION                                                        \
+  do {                                                                        \
+    yylloc.first_line = yylineno;                                             \
+    yylloc.first_column = yycolumn;                                           \
+    for (int i = 0; yytext[i] != '\0'; ++i) {                                 \
+      if (yytext[i] == '\n') {                                                \
+        yycolumn = 1;                                                         \
+      } else {                                                                \
+        ++yycolumn;                                                           \
+      }                                                                       \
+    }                                                                         \
+    yylloc.last_line = yylineno;                                              \
+    yylloc.last_column = yycolumn - 1;                                        \
+  } while (0);
 %}
 
 /* White space and single-line comment */
-WhiteSpace [ \t\n\r]*
+WhiteSpace [ \t\n\r]+
 LineComment "//".*
 
 /* Multi-line comment state */
@@ -27,10 +45,21 @@ LineComment "//".*
 /* Identifier: starts with a letter or underscore, followed by alphanumeric characters */
 Identifier [a-zA-Z_][a-zA-Z0-9_]*
 
+/* Base characters */
+Digit [0-9]
+OctDigit [0-7]
+HexDigit [0-9a-fA-F]
+
 /* Integer literals in different bases */
-Decimal [1-9][0-9]*
-Octal 0[0-7]*
-Hexadecimal 0[xX][0-9a-fA-F]+
+Decimal [1-9]{Digit}*
+Octal 0{OctDigit}*
+Hexadecimal 0[xX]{HexDigit}+
+
+/* Floating point literals */
+Exponent [eE][+-]?{Digit}+
+PHexExponent [pP][+-]?{Digit}+
+DecimalFloat ({Digit}*\.{Digit}+|{Digit}+\.){Exponent}?[fF]?|{Digit}+{Exponent}[fF]?
+HexFloat 0[xX]({HexDigit}*\.{HexDigit}+|{HexDigit}+\.){PHexExponent}[fF]?|0[xX]{HexDigit}+{PHexExponent}[fF]?
 
 %%
 {WhiteSpace}        { /* Skip whitespace */ }
@@ -55,18 +84,23 @@ Hexadecimal 0[xX][0-9a-fA-F]+
 "break"             { return BREAK; }
 "continue"          { return CONTINUE; }
 
-{Identifier}        { yylval.str_val = new std::string(yytext); return IDENT; }
+{Identifier}        { yylval.str = new std::string(yytext); return IDENT; }
 
-{Decimal}           { yylval.int_val = std::strtol(yytext, nullptr, 0); return INT_CONST; }
-{Octal}             { yylval.int_val = std::strtol(yytext, nullptr, 0); return INT_CONST; }
-{Hexadecimal}       { yylval.int_val = std::strtol(yytext, nullptr, 0); return INT_CONST; }
+{Decimal}           { yylval.i32 = std::strtol(yytext, nullptr, 0); return INT_CONST; }
+{Octal}             { yylval.i32 = std::strtol(yytext, nullptr, 0); return INT_CONST; }
+{Hexadecimal}       { yylval.i32 = std::strtol(yytext, nullptr, 0); return INT_CONST; }
 
-"&&"                { return AND; }
-"||"                { return OR; }
+{DecimalFloat}      { yylval.f32 = std::strtof(yytext, nullptr); return FLOAT_CONST; }
+{HexFloat}          { yylval.f32 = std::strtof(yytext, nullptr); return FLOAT_CONST; }
+
 "<="                { return LE; }
 ">="                { return GE; }
 "=="                { return EQ; }
 "!="                { return NE; }
+"&&"                { return AND; }
+"||"                { return OR; }
+"<"                 { return LT; }
+">"                 { return GT; }
 
 .                   { return yytext[0]; }
 %%
