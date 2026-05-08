@@ -10,7 +10,6 @@
 #include <iostream>
 #include <memory>
 #include <optional>
-#include <source_location>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -62,6 +61,7 @@ static auto opt_init(InitVal *init) -> std::optional<InitVal> {
   return std::optional<InitVal>(take(init));
 }
 
+// Node at line, column
 template <typename Node, typename Loc>
 static auto at(Node *node, const Loc &loc) -> Node * {
   node->line = loc.first_line;
@@ -177,16 +177,18 @@ static auto binary_expr(BinaryOp op, Expr *left, Expr *right, const Loc &loc)
   return new Expr(std::move(node));
 }
 
+template <typename Loc>
 static auto var_decl(
   std::shared_ptr<exodus::Type> type,
   std::vector<std::unique_ptr<VarDefAST>> *defs,
   bool is_const,
-  const auto &loc
+  const Loc &loc
 ) -> Decl * {
   return new Decl(make_ast<VarDeclAST>(loc, std::move(type), take(defs), is_const));
 }
 
-static auto call_expr(std::string *name, std::vector<Expr> args, const auto &loc)
+template <typename Loc>
+static auto call_expr(std::string *name, std::vector<Expr> args, const Loc &loc)
   -> Expr * {
   return new Expr(make_ast<CallExprAST>(loc, take(name), std::move(args)));
 }
@@ -506,12 +508,9 @@ ConstExp
 void yyerror(CompUnitAST &ast, const char *s) {
   (void)ast;
 #ifdef __DEBUG
-  exodus::Log::logger::output(
-    exodus::Log::level::Error,
-    std::source_location::current(),
-    "parse error at {}:{}: {}",
-    yylloc.first_line,
-    yylloc.first_column,
+  exodus::Log::log_error("parse error at {}:{}: {}", 
+    yylloc.first_line, 
+    yylloc.first_column, 
     s
   );
 #endif

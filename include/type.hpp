@@ -80,7 +80,7 @@ struct Func : Type {
       std::shared_ptr<Type>>
       cache;
     auto key = std::make_pair(ret.get(), _params);
-    if (cache.contains(key)) {
+    if (cache.find(key) != cache.end()) {
       return cache[key];
     }
     return cache[key] = std::make_shared<Func>(ret, _params);

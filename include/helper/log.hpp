@@ -130,21 +130,21 @@ void with_exception_handling(
 
 #define log_info(fmt_str, ...)                                                 \
   logger::output(                                                              \
-    level::Info, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+    exodus::Log::level::Info, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
   )
 
 #define log_warn(fmt_str, ...)                                                 \
   logger::output(                                                              \
-    level::Warn, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+    exodus::Log::level::Warn, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
   )
 
 #define log_error(fmt_str, ...)                                                \
   logger::output(                                                              \
-    level::Error, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
+    exodus::Log::level::Error, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
   )
 
 #define log_fatal(fmt_str, ...)                                                \
-  logger::output(                                                              \
+  exodus::Log::logger::output(                                                              \
     level::Fatal, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
   )
 
