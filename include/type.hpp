@@ -1,6 +1,9 @@
 // include/type.hpp
 #pragma once
 
+#define FMT_HEADER_ONLY
+#include "../3rd-party/fmt/format.h"
+#include "../3rd-party/fmt/ranges.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -24,6 +27,8 @@ struct Type : std::enable_shared_from_this<Type> {
   virtual auto is_void() const -> bool { return kind == Kind::Void; };
   virtual auto is_func() const -> bool { return kind == Kind::Func; };
 
+  virtual auto to_string() const -> std::string;
+
   auto ptr_to() -> std::shared_ptr<Type>;
   auto array_of(int n) -> std::shared_ptr<Type>;
 };
@@ -35,6 +40,8 @@ struct I32 : Type {
     static auto inst = std::make_shared<I32>();
     return inst;
   }
+
+  auto to_string() const -> std::string override { return "i32"; }
 };
 
 struct Float : Type {
@@ -44,6 +51,8 @@ struct Float : Type {
     static auto inst = std::make_shared<Float>();
     return inst;
   }
+
+  auto to_string() const -> std::string override { return "f32"; }
 };
 
 struct Void : Type {
@@ -53,6 +62,8 @@ struct Void : Type {
     static auto inst = std::make_shared<Void>();
     return inst;
   }
+
+  auto to_string() const -> std::string override { return "void"; }
 };
 
 struct Bool : Type {
@@ -62,6 +73,8 @@ struct Bool : Type {
     static auto inst = std::make_shared<Bool>();
     return inst;
   }
+
+  auto to_string() const -> std::string override { return "i1"; }
 };
 
 struct Func : Type {
@@ -85,6 +98,14 @@ struct Func : Type {
     }
     return cache[key] = std::make_shared<Func>(ret, _params);
   }
+
+  auto to_string() const -> std::string override {
+    std::string ptrs;
+    for (auto &p : params) {
+      ptrs += p->to_string() + (&p == &params.back() ? "" : ", ");
+    }
+    return fmt::format("({}) -> {}", ptrs, ret_type->to_string());
+  }
 };
 
 struct Ptr : Type {
@@ -100,6 +121,10 @@ struct Ptr : Type {
       return cache[key];
     }
     return cache[key] = std::make_shared<Ptr>(_target);
+  }
+
+  auto to_string() const -> std::string override {
+    return fmt::format("{}*", target->to_string());
   }
 };
 
@@ -119,6 +144,22 @@ struct Array : Type {
       return cache[key];
     }
     return cache[key] = std::make_shared<Array>(_base, _len);
+  }
+
+  auto to_string() const -> std::string override {
+    std::vector<int> dims;
+    auto cur = static_cast<const Type *>(this);
+    while (cur->is_array()) {
+      auto arr = static_cast<const Array *>(cur);
+      dims.push_back(arr->len);
+      cur = arr->base.get();
+    }
+
+    std::string res = cur->to_string();
+    for (int d : dims) {
+      res += fmt::format("[{}]", d);
+    }
+    return res;
   }
 };
 
