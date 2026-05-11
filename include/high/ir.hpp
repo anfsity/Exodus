@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef FMT_HEADER_ONLY
+#define FMT_HEADER_ONLY
+#endif
 #include "../../3rd-party/fmt/format.h"
 #include "../type.hpp"
 #include <list>

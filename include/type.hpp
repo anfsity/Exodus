@@ -1,7 +1,9 @@
 // include/type.hpp
 #pragma once
 
+#ifndef FMT_HEADER_ONLY
 #define FMT_HEADER_ONLY
+#endif
 #include "../3rd-party/fmt/format.h"
 #include "../3rd-party/fmt/ranges.h"
 #include <map>
@@ -27,7 +29,7 @@ struct Type : std::enable_shared_from_this<Type> {
   virtual auto is_void() const -> bool { return kind == Kind::Void; };
   virtual auto is_func() const -> bool { return kind == Kind::Func; };
 
-  virtual auto to_string() const -> std::string;
+  virtual auto to_string() const -> std::string = 0;
 
   auto ptr_to() -> std::shared_ptr<Type>;
   auto array_of(int n) -> std::shared_ptr<Type>;

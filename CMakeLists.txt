@@ -24,3 +24,6 @@ find_package(BISON REQUIRED)
 
 add_subdirectory(include)
 add_subdirectory(src)
+
+enable_testing()
+add_subdirectory(tests)
