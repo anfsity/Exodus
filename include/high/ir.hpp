@@ -84,6 +84,7 @@ enum class OpCode {
     Add, Sub, Mul, Div, Mod, FAdd, FSub, FMul, FDiv, // arithmetic
     I2F, F2I, ZExt,                                  // transform
     Eq, Ne, Lt, Gt, Le, Ge,                          // compare
+    And, Or, Xor, Shl, Shr,                          // logic / bitwise
     Alloca, Load, Store, GetPtr,                     // memory
     Call, Ret,                                       // function
     If, While, Break, Continue, Yield, Condition     // control
@@ -139,11 +140,6 @@ struct Function {
   bool is_decl = false;
 };
 
-struct Module {
-  std::vector<std::unique_ptr<GlobalVar>> globals;
-  std::vector<std::unique_ptr<Function>> functions;
-};
-
 struct IRContext {
   std::vector<std::unique_ptr<Value>> values;
   std::vector<std::unique_ptr<Op>> ops;
@@ -163,6 +159,12 @@ struct IRContext {
     ops.emplace_back(std::move(obj));
     return ptr;
   }
+};
+
+struct Module {
+  IRContext ctx;
+  std::vector<std::unique_ptr<GlobalVar>> globals;
+  std::vector<std::unique_ptr<Function>> functions;
 };
 
 } // namespace exodus::high_ir
