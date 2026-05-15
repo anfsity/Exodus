@@ -22,6 +22,7 @@ endif()
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
+add_subdirectory(3rd-party/fmt)
 add_subdirectory(include)
 add_subdirectory(src)
 

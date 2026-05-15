@@ -80,13 +80,9 @@ template <typename Loc>
 static void set_expr_loc(Expr &expr, const Loc &loc) {
   std::visit(
     [&](auto &node) {
-      if constexpr (std::is_same_v<std::decay_t<decltype(node)>, NumberAST>) {
-        node.line = loc.first_line;
-        node.col = loc.first_column;
-      } else if (node) {
-        node->line = loc.first_line;
-        node->col = loc.first_column;
-      }
+      if (!node) return;
+      node->line = loc.first_line;
+      node->col = loc.first_column;
     },
     expr
   );
@@ -95,12 +91,8 @@ static void set_expr_loc(Expr &expr, const Loc &loc) {
 static auto expr_type(const Expr &expr) -> std::shared_ptr<exodus::Type> {
   return std::visit(
     [](const auto &node) -> std::shared_ptr<exodus::Type> {
-      if constexpr (std::is_same_v<std::decay_t<decltype(node)>, NumberAST>) {
-        return node.eval_type;
-      } else if (node) {
-        return node->eval_type;
-      }
-      return nullptr;
+      if (!node) return nullptr;
+      return node->eval_type;
     },
     expr
   );
@@ -108,21 +100,21 @@ static auto expr_type(const Expr &expr) -> std::shared_ptr<exodus::Type> {
 
 template <typename Loc>
 static auto number_expr(int value, const Loc &loc) -> Expr * {
-  auto expr = new Expr(NumberAST(value));
-  auto &number = std::get<NumberAST>(*expr);
-  number.eval_type = I32::get();
-  number.line = loc.first_line;
-  number.col = loc.first_column;
+  auto expr = new Expr(std::make_unique<NumberAST>(value));
+  auto &number = std::get<std::unique_ptr<NumberAST>>(*expr);
+  number->eval_type = I32::get();
+  number->line = loc.first_line;
+  number->col = loc.first_column;
   return expr;
 }
 
 template <typename Loc>
 static auto number_expr(float value, const Loc &loc) -> Expr * {
-  auto expr = new Expr(NumberAST(value));
-  auto &number = std::get<NumberAST>(*expr);
-  number.eval_type = Float::get();
-  number.line = loc.first_line;
-  number.col = loc.first_column;
+  auto expr = new Expr(std::make_unique<NumberAST>(value));
+  auto &number = std::get<std::unique_ptr<NumberAST>>(*expr);
+  number->eval_type = Float::get();
+  number->line = loc.first_line;
+  number->col = loc.first_column;
   return expr;
 }
 

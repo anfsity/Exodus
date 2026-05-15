@@ -14,6 +14,7 @@ namespace exodus::high_ir {
 struct Symbol {
   std::shared_ptr<Type> type;
   Value *val;
+  Constant *const_val;
   Function *func;
   bool is_const;
 };
@@ -38,7 +39,7 @@ struct SymTab {
     return true;
   }
 
-  auto lookup(std::string &name) -> std::optional<Symbol> {
+  auto lookup(const std::string &name) -> std::optional<Symbol> {
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
       auto res = it->find(name);
       if (res != it->end()) {

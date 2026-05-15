@@ -1,7 +1,10 @@
 add_executable(ir_printer_smoke ir_printer_smoke.cpp)
-
 target_link_libraries(ir_printer_smoke PRIVATE headers)
 target_compile_features(ir_printer_smoke PRIVATE cxx_std_23)
-
 target_compile_definitions(ir_printer_smoke PRIVATE EXODUS_UNIT_TEST)
 add_test(NAME ir_printer_smoke COMMAND ir_printer_smoke)
+
+add_executable(ir_builder_test ir_builder_test.cpp)
+target_link_libraries(ir_builder_test PRIVATE headers)
+target_compile_features(ir_builder_test PRIVATE cxx_std_23)
+add_test(NAME ir_builder_test COMMAND ir_builder_test)

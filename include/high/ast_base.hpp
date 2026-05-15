@@ -71,7 +71,7 @@ struct FuncDefAST;
 
 // Expr 表明表达式 「有值且可求值」, 具有返回值
 using Expr = std::variant<
-  NumberAST,
+  std::unique_ptr<NumberAST>,
   std::unique_ptr<LvalAST>,
   std::unique_ptr<BinaryExprAST>,
   std::unique_ptr<UnaryExprAST>,
@@ -95,7 +95,7 @@ using BlockItem = std::variant<Decl, Stmt>;
 using GlobalItem = std::variant<Decl, std::unique_ptr<FuncDefAST>>;
 struct CompUnitAST {
   std::vector<GlobalItem> items;
-  std::string source_file; //< for meta data, such that file name, target arch.
+  std::string source_file; //< for meta data, such like file name, target arch.
 };
 
 } // namespace exodus::ast

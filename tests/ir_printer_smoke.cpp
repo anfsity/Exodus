@@ -1,6 +1,6 @@
-#include "high/ir.hpp"
-#include "high/ir_printer.hpp"
-#include "type.hpp"
+#include "../include/high/ir.hpp"
+#include "../include/high/ir_printer.hpp"
+#include "../include/type.hpp"
 
 #include <iostream>
 #include <memory>
@@ -81,16 +81,15 @@ auto add_global_array(Module &module) -> GlobalAddr * {
 auto add_decl(Module &module) -> void {
   auto decl = std::make_unique<Function>();
   decl->name = "putint";
-  decl->type = Void::get();
+  decl->type = Func::get(Void::get(), {I32::get()});
   decl->is_decl = true;
-  decl->args.push_back(module.ctx.make_value<Argument>(I32::get(), 0));
   module.functions.push_back(std::move(decl));
 }
 
 auto add_main(Module &module, GlobalAddr *array_addr) -> void {
   auto func = std::make_unique<Function>();
   func->name = "main";
-  func->type = I32::get();
+  func->type = Func::get(I32::get(), {});
 
   auto *ptr = make_result(module, I32::get()->ptr_to());
   make_op(module, func->body, OpCode::Alloca, {}, ptr);

@@ -165,24 +165,21 @@ inline auto IRPrinter::dump(const InitVal &i) -> std::string {
 
 inline auto IRPrinter::dump(const Function &f) -> std::string {
   std::string args_s;
-  std::string type_s;
 
   for (auto &arg : f.args) {
     args_s += arg->dump() + (&arg == &f.args.back() ? "" : ", ");
-    type_s += arg->type->to_string() + (&arg == &f.args.back() ? "" : ", ");
   }
 
   if (f.is_decl) {
     return fmt::format(
-      "decl @{}() : ({}) -> {}\n", f.name, type_s, f.type->to_string()
+      "decl @{}() : {}\n", f.name, f.type->to_string()
     );
   }
 
   return fmt::format(
-    "func @{}({}) : ({}) -> {} {{\n{}}}\n",
+    "func @{}({}) : {} {{\n{}}}\n",
     f.name,
     args_s,
-    type_s,
     f.type->to_string(),
     dump(f.body)
   );
@@ -202,7 +199,7 @@ inline auto IRPrinter::dump_call(const Op &op) -> std::string {
   auto &cp = std::get<CallPayload>(op.payload);
   std::string line;
 
-  if (op.result) {
+  if (op.result && !op.result->type->is_void()) {
     line += get(op.result) + " = ";
   }
 

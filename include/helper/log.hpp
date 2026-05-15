@@ -3,7 +3,9 @@
 #pragma once
 #ifdef __DEBUG
 
+#ifndef FMT_HEADER_ONLY
 #define FMT_HEADER_ONLY
+#endif
 #include "../3rd-party/fmt/color.h"
 #include "../3rd-party/fmt/core.h"
 #include "../3rd-party/fmt/format.h"
@@ -130,21 +132,30 @@ void with_exception_handling(
 
 #define log_info(fmt_str, ...)                                                 \
   logger::output(                                                              \
-    exodus::Log::level::Info, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+    exodus::Log::level::Info,                                                  \
+    std::source_location::current(),                                           \
+    fmt_str,                                                                   \
+    ##__VA_ARGS__                                                              \
   )
 
 #define log_warn(fmt_str, ...)                                                 \
   logger::output(                                                              \
-    exodus::Log::level::Warn, std::source_location::current(), fmt_str, ##__VA_ARGS__       \
+    exodus::Log::level::Warn,                                                  \
+    std::source_location::current(),                                           \
+    fmt_str,                                                                   \
+    ##__VA_ARGS__                                                              \
   )
 
 #define log_error(fmt_str, ...)                                                \
   logger::output(                                                              \
-    exodus::Log::level::Error, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
+    exodus::Log::level::Error,                                                 \
+    std::source_location::current(),                                           \
+    fmt_str,                                                                   \
+    ##__VA_ARGS__                                                              \
   )
 
 #define log_fatal(fmt_str, ...)                                                \
-  exodus::Log::logger::output(                                                              \
+  exodus::Log::logger::output(                                                 \
     level::Fatal, std::source_location::current(), fmt_str, ##__VA_ARGS__      \
   )
 
@@ -154,11 +165,22 @@ void with_exception_handling(
 
 namespace exodus::Log {
 
-#define log_info(fmt_str, ...)
-#define log_warn(fmt_str, ...)
-#define log_error(fmt_str, ...)
-#define log_fatal(fmt_str, ...)
-#define with_exception_handling(...)
+template <typename... Args>
+inline void log_info(const char *, Args &&...) noexcept {}
+
+template <typename... Args>
+inline void log_warn(const char *, Args &&...) noexcept {}
+
+template <typename... Args>
+inline void log_error(const char *, Args &&...) noexcept {}
+
+template <typename... Args>
+inline void log_fatal(const char *, Args &&...) noexcept {}
+
+template <typename Func>
+inline void with_exception_handling(Func &&func) {
+  func();
+}
 
 } // namespace exodus::Log
 

@@ -87,9 +87,9 @@ struct Func : Type {
       : Type(Kind::Func), ret_type(std::move(ret)), params(std::move(_params)) {
   }
 
-  static auto
-  get(std::shared_ptr<Type> ret, std::vector<std::shared_ptr<Type>> _params)
-    -> std::shared_ptr<Type> {
+  static auto get(
+    std::shared_ptr<Type> ret, const std::vector<std::shared_ptr<Type>> &_params
+  ) -> std::shared_ptr<Type> {
     static std::map<
       std::pair<Type *, std::vector<std::shared_ptr<Type>>>,
       std::shared_ptr<Type>>
@@ -136,6 +136,17 @@ struct Array : Type {
 
   Array(std::shared_ptr<Type> _target, int _len)
       : Type(Kind::Array), base(std::move(_target)), len(_len) {}
+
+  auto size() const -> int {
+    int res = 1;
+    auto cur = static_cast<const Type *>(this);
+    while (cur->is_array()) {
+      auto arr = static_cast<const Array *>(cur);
+      res *= arr->len;
+      cur = arr->base.get();
+    }
+    return res;
+  }
 
   static auto get(std::shared_ptr<Type> _base, int _len)
     -> std::shared_ptr<Type> {
