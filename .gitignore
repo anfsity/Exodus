@@ -21,6 +21,8 @@
 !*.zip
 !.clangd
 !.clang-format
+!*.sh
+!*.py
 
 .git/
 .vscode/
