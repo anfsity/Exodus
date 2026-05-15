@@ -292,7 +292,10 @@ inline auto IRPrinter::dump(const Op &op) -> std::string {
         if (ifp.else_region.has_value()) {
           res +=
             fmt::format(" else {{\n{}{}}}\n", dump(*ifp.else_region), ident());
+        } else {
+          res += "\n";
         }
+
         return res;
       },
       [&](const WhilePayload &whp) -> std::string {

@@ -228,6 +228,7 @@ int main() {
     return 1;
   }
 
+  std::cout << "IRBuilder test passed!\n";
   return 0;
 }
 #endif

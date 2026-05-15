@@ -279,7 +279,7 @@ inline auto IRBuilder::visit(const ast::Stmt &ast_stmt) -> void {
         cur_region = old_region;
         auto op = emit(OpCode::While, nullptr);
         op->payload =
-          WhilePayload(std::move(cond_region), std::move(loop_region));
+          WhilePayload{std::move(cond_region), std::move(loop_region)};
       },
 
       [&](const std::unique_ptr<ast::BreakStmtAST> &) {
@@ -326,33 +326,31 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
       [&](const std::unique_ptr<ast::BinaryExprAST> &bin) -> Value * {
         if (bin->op == ast::BinaryOp::And || bin->op == ast::BinaryOp::Or) {
           // A && B 或 A || B
-          // 先算 A or B
           Value *res_ptr = emit_val(OpCode::Alloca, Bool::get()->ptr_to());
           Value *lhs = visit(bin->left);
-          auto get_cond = [&](Value *v) {
-            auto *zero = ctx->make_value<Constant>(v->type, 0);
+          auto to_cond = [&](Value *v) -> Value * {
+            auto *zero =
+              v->type->is_f32()
+                ? static_cast<Value *>(ctx->make_value<Constant>(v->type, 0.0f))
+                : static_cast<Value *>(ctx->make_value<Constant>(v->type, 0));
             return emit_val(OpCode::Ne, Bool::get(), v, zero);
           };
 
-          auto lhs_bool = get_cond(lhs);
+          auto lhs_bool = to_cond(lhs);
           emit(OpCode::Store, nullptr, lhs_bool, res_ptr);
 
+          auto *bool_zero = ctx->make_value<Constant>(Bool::get(), 0);
           Value *if_cond =
             (bin->op == ast::BinaryOp::And
                ? lhs_bool
-               : emit_val(
-                   OpCode::Eq,
-                   Bool::get(),
-                   lhs_bool,
-                   ctx->make_value<Constant>(lhs->type, 0)
-                 ));
+               : emit_val(OpCode::Eq, Bool::get(), lhs_bool, bool_zero));
 
           auto old_region = cur_region;
           auto then_region = std::make_unique<Region>();
           cur_region = then_region.get();
 
           Value *rhs = visit(bin->right);
-          Value *rhs_bool = get_cond(rhs);
+          Value *rhs_bool = to_cond(rhs);
           emit(OpCode::Store, nullptr, rhs_bool, res_ptr);
 
           cur_region = old_region;
@@ -360,30 +358,25 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
           if_op->payload = IfPayload{std::move(then_region), std::nullopt};
 
           Value *res = emit_val(OpCode::Load, Bool::get(), res_ptr);
-          // TODO: 这里还要考虑一下，先这样吧
-          return bin->eval_type->is_i32()
-                   ? emit_val(OpCode::ZExt, I32::get(), res)
-                   : res;
+          return emit_val(OpCode::ZExt, I32::get(), res);
         }
 
         Value *lhs = visit(bin->left);
         Value *rhs = visit(bin->right);
-
-        if (
-          lhs->kind == ValueKind::Constant && rhs->kind == ValueKind::Constant
-        ) {
-          auto *lc = static_cast<Constant *>(lhs);
-          auto *rc = static_cast<Constant *>(rhs);
-          auto res_val = eval_arith(bin->op, lc->val, rc->val);
-          return ctx->make_value<Constant>(bin->eval_type, res_val);
-        }
-
-        if (cur_region == nullptr) {
-          Log::log_error("Initializer element is not a compile-time constant");
-          return ctx->make_value<Constant>(bin->eval_type, 0);
-        }
-
-        bool is_f = bin->eval_type->is_f32();
+        auto promote_bool_to_i32 = [&](Value *v) -> Value * {
+          if (!v->type->is_bool()) {
+            return v;
+          }
+          if (v->kind == ValueKind::Constant) {
+            auto *cv = static_cast<Constant *>(v);
+            return ctx->make_value<Constant>(
+              I32::get(), std::get<int>(cv->val)
+            );
+          }
+          return emit_val(OpCode::ZExt, I32::get(), v);
+        };
+        lhs = promote_bool_to_i32(lhs);
+        rhs = promote_bool_to_i32(rhs);
 
         static const std::map<ast::BinaryOp, std::pair<OpCode, OpCode>> op_map =
           {
@@ -403,13 +396,40 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
           {ast::BinaryOp::Ge, OpCode::Ge},
         };
 
+        std::shared_ptr<Type> eval_type;
+        if (lhs->type->is_f32() || rhs->type->is_f32()) {
+          eval_type = Float::get();
+        }
+        if (lhs->type->is_i32() && rhs->type->is_i32()) {
+          eval_type = I32::get();
+        }
+
+        assert(eval_type && "ERROR eval type");
+        auto result_type = cmp_map.count(bin->op) ? Bool::get() : eval_type;
+
+        if (
+          lhs->kind == ValueKind::Constant && rhs->kind == ValueKind::Constant
+        ) {
+          auto *lc = static_cast<Constant *>(lhs);
+          auto *rc = static_cast<Constant *>(rhs);
+          auto res_val = eval_arith(bin->op, lc->val, rc->val);
+          return ctx->make_value<Constant>(result_type, res_val);
+        }
+
+        if (symtab.is_global()) {
+          Log::log_error("Initializer element is not a compile-time constant");
+          return ctx->make_value<Constant>(result_type, 0);
+        }
+
+        bool is_f = eval_type->is_f32();
+
         if (op_map.count(bin->op)) {
           auto &[f, s] = op_map.at(bin->op);
-          return emit_val(is_f ? s : f, bin->eval_type, lhs, rhs);
+          return emit_val(is_f ? s : f, eval_type, lhs, rhs);
         }
 
         if (cmp_map.count(bin->op)) {
-          return emit_val(cmp_map.at(bin->op), bin->eval_type, lhs, rhs);
+          return emit_val(cmp_map.at(bin->op), Bool::get(), lhs, rhs);
         }
 
         return nullptr;
@@ -421,8 +441,15 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
         if (val->kind == ValueKind::Constant) {
           auto *cv = static_cast<Constant *>(val);
           auto res_val = eval_unary(una->op, cv->val);
-          auto res_type =
-            una->op == ast::UnaryOp::Not ? Bool::get() : val->type;
+          auto res_type = val->type;
+          if (una->op == ast::UnaryOp::Not) {
+            res_type = Bool::get();
+          } else if (
+            (una->op == ast::UnaryOp::Neg || una->op == ast::UnaryOp::Pos) &&
+            val->type->is_bool()
+          ) {
+            res_type = I32::get();
+          }
           return ctx->make_value<Constant>(res_type, res_val);
         }
 
@@ -431,10 +458,12 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
           return ctx->make_value<Constant>(val->type, 0);
         }
 
-        bool is_f = val->type->is_f32();
-
         switch (una->op) {
         case ast::UnaryOp::Neg: {
+          if (val->type->is_bool()) {
+            val = emit_val(OpCode::ZExt, I32::get(), val);
+          }
+          bool is_f = val->type->is_f32();
           Value *zero = ctx->make_value<Constant>(val->type, 0);
           OpCode code = is_f ? OpCode::FSub : OpCode::Sub;
           return emit_val(code, val->type, zero, val);
@@ -444,6 +473,9 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
           return emit_val(OpCode::Eq, Bool::get(), val, zero);
         }
         case ast::UnaryOp::Pos:
+          if (val->type->is_bool()) {
+            return emit_val(OpCode::ZExt, I32::get(), val);
+          }
           return val;
         }
         return nullptr;
@@ -726,7 +758,7 @@ inline auto IRBuilder::flatten_gb_list(
 inline auto
 IRBuilder::eval_arith(ast::BinaryOp op, Constant::Data l, Constant::Data r)
   -> Constant::Data {
-  if (std::holds_alternative<int>(l)) {
+  if (std::holds_alternative<int>(l) && std::holds_alternative<int>(r)) {
     int v1 = std::get<int>(l), v2 = std::get<int>(r);
     switch (op) {
     case ast::BinaryOp::Add:
@@ -757,7 +789,10 @@ IRBuilder::eval_arith(ast::BinaryOp op, Constant::Data l, Constant::Data r)
       return (v1 != 0 || v2 != 0) ? 1 : 0;
     }
   } else {
-    float v1 = std::get<float>(l), v2 = std::get<float>(r);
+    float v1 = std::holds_alternative<float>(l) ? std::get<float>(l)
+                                                : static_cast<float>(std::get<int>(l));
+    float v2 = std::holds_alternative<float>(r) ? std::get<float>(r)
+                                                : static_cast<float>(std::get<int>(r));
     switch (op) {
     case ast::BinaryOp::Add:
       return v1 + v2;
@@ -821,7 +856,9 @@ inline auto push_operand(Op *op, T &&val) -> void {
   if constexpr (std::is_same_v<std::decay_t<T>, std::vector<Value *>>) {
     op->operands.insert(op->operands.end(), val.begin(), val.end());
   } else {
-    op->operands.emplace_back(val);
+    if (val != nullptr) {
+      op->operands.emplace_back(val);
+    }
   }
 }
 
