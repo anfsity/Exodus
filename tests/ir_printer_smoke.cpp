@@ -135,7 +135,6 @@ auto add_main(Module &module, GlobalAddr *array_addr) -> void {
   );
 
   Region then_region;
-  make_op(module, then_region, OpCode::Yield);
 
   Region else_region;
   make_op(module, else_region, OpCode::Break);
@@ -209,7 +208,6 @@ int main() {
     "  call @putint(%6) : (i32)\n"
     "  %8 = call @add(%2, 2) : (i32, i32) -> i32\n"
     "  if %5 {\n"
-    "    yield\n"
     "  } else {\n"
     "    break\n"
     "  }\n"
