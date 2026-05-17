@@ -12,6 +12,10 @@
 #include <variant>
 #include <vector>
 
+namespace exodus::mid_ir {
+struct Block;
+}
+
 namespace exodus::high_ir {
 
 struct Op;
@@ -90,7 +94,8 @@ enum class OpCode {
     And, Or, Xor, Shl, Shr,                          // logic / bitwise
     Alloca, Load, Store, GetPtr,                     // memory
     Call, Ret,                                       // function
-    If, While, Break, Continue, Yield, Condition     // control
+    If, While, Break, Continue, Yield, Condition,    // control
+    Jump, Branch                                     // for mid ir  
 };
 // clang-format on
 
@@ -115,6 +120,11 @@ struct Op {
   OpCode code;
 
   std::vector<Value *> operands;
+  // 经过深思熟虑，最终决定这种方式来代表 jump 和 branch
+  // 对于普通指令来说，他们的 successors 是空的，对于 mid ir 的
+  // jump 和 branch 来说，jump 的 operands 是空的，仅有一个 successors
+  // branch 的 operands 大小为 1, 有两个 successors，then 和 else
+  std::vector<mid_ir::Block *> successors;
   OpResult *result = nullptr;
 
   using Payload =
@@ -123,8 +133,6 @@ struct Op {
   Payload payload;
 
   Op(OpCode c, Payload p = EmptyPayload{}) : code(c), payload(std::move(p)) {}
-
-  auto val() -> Value * { return result; }
 };
 
 struct GlobalVar {
