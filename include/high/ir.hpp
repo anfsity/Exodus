@@ -94,7 +94,7 @@ enum class OpCode {
     And, Or, Xor, Shl, Shr,                          // logic / bitwise
     Alloca, Load, Store, GetPtr,                     // memory
     Call, Ret,                                       // function
-    If, While, Break, Continue, Yield, Condition,    // control
+    If, While, Break, Continue, Condition,           // control
     Jump, Branch                                     // for mid ir  
 };
 // clang-format on
