@@ -10,6 +10,9 @@ struct Block {
   std::string name;
   std::list<high_ir::Op *> insts;
 
+  std::vector<Block *> preds;
+  std::vector<Block *> succs;
+
   Block(std::string n) : name(std::move(n)) {}
 };
 

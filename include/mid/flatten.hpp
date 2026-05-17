@@ -1,0 +1,197 @@
+#pragma once
+
+#include "../high/ir.hpp"
+#include "ir.hpp"
+#include <cassert>
+#include <vector>
+
+namespace exodus::mid_ir {
+
+struct MidModule {
+  high_ir::IRContext *ctx;
+  std::vector<high_ir::GlobalVar *> globals;
+  std::vector<std::unique_ptr<LinearFunction>> functions;
+};
+
+struct Flattener {
+  Flattener(high_ir::Module *m) : old_module(m) {}
+  auto flatten() -> std::unique_ptr<MidModule>;
+
+private:
+  high_ir::Module *old_module;
+  MidModule *new_module;
+  LinearFunction *cur_func = nullptr;
+  Block *cur_block = nullptr;
+
+  int b_cnt = 0;
+  std::vector<std::pair<Block *, Block *>> loop_stk;
+
+  auto visit(high_ir::Function *f) -> std::unique_ptr<LinearFunction>;
+  auto visit(const high_ir::Region &region) -> void;
+  auto create_block(std::string name) -> Block *;
+};
+
+inline auto Flattener::create_block(std::string name) -> Block * {
+  auto b = std::make_unique<Block>(name + "_" + std::to_string(b_cnt++));
+  auto *ptr = b.get();
+  cur_func->blocks.push_back(std::move(b));
+  return ptr;
+}
+
+inline auto Flattener::flatten() -> std::unique_ptr<MidModule> {
+  auto res = std::make_unique<MidModule>();
+  new_module = res.get();
+  new_module->ctx = &old_module->ctx;
+
+  for (auto &g : old_module->globals) {
+    new_module->globals.push_back(g.get());
+  }
+
+  for (auto &f : old_module->functions) {
+    b_cnt = 0;
+    new_module->functions.push_back(visit(f.get()));
+  }
+
+  return res;
+}
+
+inline auto Flattener::visit(high_ir::Function *f)
+  -> std::unique_ptr<LinearFunction> {
+  auto lf = std::make_unique<LinearFunction>();
+  cur_func = lf.get();
+  cur_func->name = f->name;
+  cur_func->type = f->type;
+  cur_func->args = f->args;
+  cur_func->is_decl = f->is_decl;
+
+  if (!f->is_decl) {
+    cur_block = create_block("entry");
+    visit(f->body);
+  }
+
+  cur_func = nullptr;
+  cur_block = nullptr;
+  return lf;
+}
+
+inline auto Flattener::visit(const high_ir::Region &region) -> void {
+  for (auto *op : region) {
+    // 仍然是经过深思熟虑，我决定 mid ir 的 flatten 依赖于 high ir 阶段的优化
+    // flattener 作为构建 mid ir 的核心工具，我希望在构建过程中能够满足一个核心假设
+    // 「high ir 没有多余分支，没有不可达指令，最小化嵌套」
+    // 这样，在 flatten 过程中，就不需要考虑各种特例，为了构建 CFG 而弄得乱七八糟
+    switch (op->code) {
+    case high_ir::OpCode::If: {
+      auto &payload = std::get<high_ir::IfPayload>(op->payload);
+      auto *then_b = create_block("then");
+      auto *else_b = payload.else_region ? create_block("else") : nullptr;
+      auto *merge_b = create_block("merge");
+
+      // br res, then_block, else_block/merge_block
+      auto *br = new_module->ctx->make_op(high_ir::OpCode::Branch);
+      br->operands.push_back(op->operands[0]);
+      br->successors.push_back(then_b);
+      br->successors.push_back(else_b ? else_b : merge_b);
+      cur_block->insts.push_back(br);
+
+      // Visit Then
+      cur_block = then_b;
+      visit(*payload.then_region);
+      if (
+        cur_block->insts.empty() ||
+        (cur_block->insts.back()->code != high_ir::OpCode::Ret &&
+         cur_block->insts.back()->code != high_ir::OpCode::Jump &&
+         cur_block->insts.back()->code != high_ir::OpCode::Branch)
+      ) {
+        auto *jmp = new_module->ctx->make_op(high_ir::OpCode::Jump);
+        jmp->successors.push_back(merge_b);
+        cur_block->insts.push_back(jmp);
+      }
+
+      // Visit Else
+      if (else_b) {
+        cur_block = else_b;
+        visit(*payload.else_region);
+        if (
+          cur_block->insts.empty() ||
+          (cur_block->insts.back()->code != high_ir::OpCode::Ret &&
+           cur_block->insts.back()->code != high_ir::OpCode::Jump &&
+           cur_block->insts.back()->code != high_ir::OpCode::Branch)
+        ) {
+          auto *jmp = new_module->ctx->make_op(high_ir::OpCode::Jump);
+          jmp->successors.push_back(merge_b);
+          cur_block->insts.push_back(jmp);
+        }
+      }
+
+      cur_block = merge_b;
+      break;
+    }
+    case high_ir::OpCode::While: {
+      auto &payload = std::get<high_ir::WhilePayload>(op->payload);
+      auto *cond_b = create_block("while_cond");
+      auto *body_b = create_block("while_body");
+      auto *exit_b = create_block("while_exit");
+
+      // Jump to cond
+      auto *jmp_to_cond = new_module->ctx->make_op(high_ir::OpCode::Jump);
+      jmp_to_cond->successors.push_back(cond_b);
+      cur_block->insts.push_back(jmp_to_cond);
+
+      // Visit cond_region
+      cur_block = cond_b;
+      for (auto *cond_op : *payload.cond_region) {
+        if (cond_op->code == high_ir::OpCode::Condition) {
+          auto *br = new_module->ctx->make_op(high_ir::OpCode::Branch);
+          br->operands.push_back(cond_op->operands[0]);
+          br->successors.push_back(body_b);
+          br->successors.push_back(exit_b);
+          cur_block->insts.push_back(br);
+        } else {
+          cur_block->insts.push_back(cond_op);
+        }
+      }
+
+      // Visit body_region
+      cur_block = body_b;
+      loop_stk.push_back({cond_b, exit_b});
+      visit(*payload.loop_region);
+      loop_stk.pop_back();
+
+      // Jump back to cond
+      if (
+        cur_block->insts.empty() ||
+        (cur_block->insts.back()->code != high_ir::OpCode::Ret &&
+         cur_block->insts.back()->code != high_ir::OpCode::Jump &&
+         cur_block->insts.back()->code != high_ir::OpCode::Branch)
+      ) {
+        auto *jmp_back = new_module->ctx->make_op(high_ir::OpCode::Jump);
+        jmp_back->successors.push_back(cond_b);
+        cur_block->insts.push_back(jmp_back);
+      }
+
+      cur_block = exit_b;
+      break;
+    }
+    case high_ir::OpCode::Break: {
+      assert(loop_stk.size());
+      auto *jmp = new_module->ctx->make_op(high_ir::OpCode::Jump);
+      jmp->successors.push_back(loop_stk.back().second);
+      cur_block->insts.push_back(jmp);
+      break;
+    }
+    case high_ir::OpCode::Continue: {
+      assert(loop_stk.size());
+      auto *jmp = new_module->ctx->make_op(high_ir::OpCode::Jump);
+      jmp->successors.push_back(loop_stk.back().first);
+      cur_block->insts.push_back(jmp);
+      break;
+    }
+    default:
+      cur_block->insts.push_back(op);
+      break;
+    }
+  }
+}
+
+} // namespace exodus::mid_ir
