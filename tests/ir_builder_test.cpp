@@ -160,6 +160,7 @@ auto test_array_and_folding() -> std::string {
 
 } // namespace
 
+#ifdef EXODUS_UNIT_TEST
 int main() {
   const std::string actual = test_array_and_folding();
 
@@ -196,3 +197,4 @@ int main() {
   std::cout << "IRBuilder test passed!\n";
   return 0;
 }
+#endif

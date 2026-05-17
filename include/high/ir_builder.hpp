@@ -65,6 +65,16 @@ inline auto IRBuilder::build(const ast::CompUnitAST &ast)
   module = _module.get();
   ctx = &_module->ctx;
 
+  for (auto const &[name, sym] : symtab.scopes[0]) {
+    if (sym.type->is_func() && !sym.func) {
+      auto f_decl = std::make_unique<Function>();
+      f_decl->name = name;
+      f_decl->type = sym.type;
+      f_decl->is_decl = true;
+      module->functions.push_back(std::move(f_decl));
+    }
+  }
+
   for (const auto &item : ast.items) {
     visit(item);
   }
