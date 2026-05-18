@@ -1,14 +1,18 @@
-#include "../3rd-party/fmt/core.h"
-#include "../include/helper/log.hpp"
-#include "../include/high/ast.hpp"
+#include <cstdio>
+#include <memory>
+#include <string>
+
+#include "../include/fmt/base.h"
 #include "../include/high/ir_builder.hpp"
 #include "../include/high/ir_printer.hpp"
-#include "../include/type.hpp"
-#include <memory>
+#include "../include/mid/flatten.hpp"
+#include "high/ast_base.hpp"
+#include "high/ir.hpp"
 
 using namespace exodus;
 using namespace exodus::ast;
 using namespace exodus::high_ir;
+using namespace exodus::mid_ir;
 
 extern FILE *yyin;
 extern int yyparse(CompUnitAST &ast);
@@ -31,9 +35,14 @@ int main(int argc, char **argv) {
   IRBuilder builder(nullptr);
   auto module = builder.build(ast);
 
+  Flattener flattener(module.get());
+  auto mid_module = flattener.flatten();
+
   IRPrinter printer;
   fmt::print("{}\n", printer.dump(*module));
 
+  // LinearIRPrinter printer;
+  // fmt::print("{}\n", printer.dump(*mid_module));
+
   return 0;
 }
-

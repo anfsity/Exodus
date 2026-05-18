@@ -21,6 +21,7 @@
 !*.zip
 !.clangd
 !.clang-format
+!.clang-tidy
 !*.sh
 !*.py
 

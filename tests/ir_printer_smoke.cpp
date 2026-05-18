@@ -4,8 +4,11 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
+#include <variant>
+#include <vector>
 
 using namespace exodus;
 using namespace exodus::high_ir;

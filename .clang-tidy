@@ -1,0 +1,17 @@
+---
+Checks:          'bugprone-*,
+                  cppcoreguidelines-*,
+                  modernize-*,
+                  performance-*,
+                  -readability-*,
+                  -bugprone-exception-escape,
+                  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+                  -cppcoreguidelines-avoid-non-const-global-variables,
+                  -cppcoreguidelines-owning-memory,
+                  -cppcoreguidelines-avoid-magic-numbers,
+                  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+                  -cppcoreguidelines-pro-type-vararg,
+                  -modernize-use-trailing-return-type,
+                  -modernize-use-designated-initializers'
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(include/|src/).*'

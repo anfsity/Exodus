@@ -15,6 +15,30 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+# Static Analysis Tools
+option(ENABLE_CLANG_TIDY "Enable clang-tidy analysis during build" ON)
+option(ENABLE_IWYU "Enable Include-What-You-Use analysis during build" OFF)
+
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+    if(CLANG_TIDY_EXE)
+        message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "clang-tidy not found, disabling ENABLE_CLANG_TIDY")
+    endif()
+endif()
+
+if(ENABLE_IWYU)
+    find_program(IWYU_EXE NAMES "include-what-you-use")
+    if(IWYU_EXE)
+        message(STATUS "iwyu found: ${IWYU_EXE}")
+        set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "${IWYU_EXE}")
+    else()
+        message(WARNING "include-what-you-use not found, disabling ENABLE_IWYU")
+    endif()
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(__DEBUG)
 endif()
