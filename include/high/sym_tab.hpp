@@ -61,11 +61,13 @@ struct SymTab {
 };
 
 inline auto SymTab::register_sysy() -> void {
-  auto add_builtin = [&](const std::string &name, std::shared_ptr<Type> ret_type,
-                         std::vector<std::shared_ptr<Type>> params) {
+  auto add_builtin = [&](
+                       const std::string &name,
+                       const std::shared_ptr<Type> &ret_type,
+                       const std::vector<std::shared_ptr<Type>> &params
+                     ) {
     [[maybe_unused]] const bool ok = push(
-      name,
-      {Func::get(std::move(ret_type), params), nullptr, nullptr, nullptr, false}
+      name, {Func::get(ret_type, params), nullptr, nullptr, nullptr, false}
     );
     assert(ok && "duplicated SysY builtin symbol");
   };

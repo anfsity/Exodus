@@ -15,12 +15,18 @@ namespace exodus {
 
 // 虽然 function
 // 不是一等公民，但是如果把函数作为类型，我们可以统一符号表的逻辑。这样写起来代码会很清爽
-enum class Kind { I32, F32, Ptr, Array, Bool, Void, Func };
+enum class Kind : uint8_t { I32, F32, Ptr, Array, Bool, Void, Func };
 
 struct Type : std::enable_shared_from_this<Type> {
   Kind kind;
   Type(Kind kind_) : kind(kind_) {}
   virtual ~Type() = default;
+
+  Type(const Type &) = delete;
+  Type &operator=(const Type &) = delete;
+  Type(Type &&) = delete;
+  Type &operator=(Type &&) = delete;
+
   virtual auto is_i32() const -> bool { return kind == Kind::I32; };
   virtual auto is_f32() const -> bool { return kind == Kind::F32; };
   virtual auto is_ptr() const -> bool { return kind == Kind::Ptr; };
@@ -88,7 +94,8 @@ struct Func : Type {
   }
 
   static auto get(
-    std::shared_ptr<Type> ret, const std::vector<std::shared_ptr<Type>> &_params
+    const std::shared_ptr<Type> &ret,
+    const std::vector<std::shared_ptr<Type>> &_params
   ) -> std::shared_ptr<Type> {
     static std::map<
       std::pair<Type *, std::vector<std::shared_ptr<Type>>>,
@@ -116,7 +123,8 @@ struct Ptr : Type {
   Ptr(std::shared_ptr<Type> _target)
       : Type(Kind::Ptr), target(std::move(_target)) {}
 
-  static auto get(std::shared_ptr<Type> _target) -> std::shared_ptr<Type> {
+  static auto get(const std::shared_ptr<Type> &_target)
+    -> std::shared_ptr<Type> {
     static std::map<Type *, std::shared_ptr<Type>> cache;
     auto key = _target.get();
     if (cache.find(key) != cache.end()) {
@@ -141,14 +149,14 @@ struct Array : Type {
     int res = 1;
     auto cur = static_cast<const Type *>(this);
     while (cur->is_array()) {
-      auto arr = static_cast<const Array *>(cur);
+      auto arr = static_cast<const Array *>(cur); // NOLINT
       res *= arr->len;
       cur = arr->base.get();
     }
     return res;
   }
 
-  static auto get(std::shared_ptr<Type> _base, int _len)
+  static auto get(const std::shared_ptr<Type> &_base, int _len)
     -> std::shared_ptr<Type> {
     static std::map<std::pair<Type *, int>, std::shared_ptr<Array>> cache;
     auto key = std::make_pair(_base.get(), _len);
@@ -163,7 +171,7 @@ struct Array : Type {
     std::vector<int> dims;
     auto cur = static_cast<const Type *>(this);
     while (cur->is_array()) {
-      auto arr = static_cast<const Array *>(cur);
+      auto arr = static_cast<const Array *>(cur); // NOLINT
       dims.push_back(arr->len);
       cur = arr->base.get();
     }

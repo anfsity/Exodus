@@ -36,6 +36,12 @@ inline auto is_cast_opcode(high_ir::OpCode oc) -> bool {
 struct IRPrinterBase {
   virtual ~IRPrinterBase() = default;
 
+  IRPrinterBase() = default;
+  IRPrinterBase(const IRPrinterBase &) = delete;
+  IRPrinterBase &operator=(const IRPrinterBase &) = delete;
+  IRPrinterBase(IRPrinterBase &&) = delete;
+  IRPrinterBase &operator=(IRPrinterBase &&) = delete;
+
   auto get_value_name(const high_ir::Value *v) -> std::string {
     if (v->kind == high_ir::ValueKind::Constant) {
       return v->dump();
@@ -66,7 +72,7 @@ struct IRPrinterBase {
   auto dump_init(const high_ir::InitVal &i) -> std::string {
     return std::visit(
       overload{
-        [](int i) -> std::string { return std::to_string(i); },
+        [](int val) -> std::string { return std::to_string(val); },
         [](float f) -> std::string { return std::to_string(f) + "f"; },
         [](high_ir::ZeroInit) -> std::string {
           return std::string("zeroinit");
@@ -205,11 +211,13 @@ struct IRPrinterBase {
   }
 
 protected:
-  int id_cnt = 0;
-  int idt = 0;
-  std::unordered_map<const high_ir::Value *, int> val_ids;
+  auto ident() -> std::string {
+    return std::string(static_cast<size_t>(idt) * 2, ' ');
+  }
 
-  auto ident() -> std::string { return std::string(idt * 2, ' '); }
+  int id_cnt = 0;                                          // NOLINT
+  int idt = 0;                                             // NOLINT
+  std::unordered_map<const high_ir::Value *, int> val_ids; // NOLINT
 };
 
 } // namespace exodus

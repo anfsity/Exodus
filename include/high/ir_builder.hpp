@@ -23,24 +23,25 @@ private:
   Region *cur_region = nullptr;
 
   template <typename... Args>
-  auto emit(OpCode c, std::shared_ptr<Type> rt, Args... args) -> Op *;
+  auto emit(OpCode c, const std::shared_ptr<Type> &rt, Args &&...args) -> Op *;
 
   template <typename... Args>
-  auto emit_val(OpCode c, std::shared_ptr<Type> rt, Args... args) -> Value *;
+  auto emit_val(OpCode c, const std::shared_ptr<Type> &rt, Args &&...args)
+    -> Value *;
 
-  auto eval_gbinit(const ast::InitVal &init, std::shared_ptr<Type> type)
+  auto eval_gbinit(const ast::InitVal &init, const std::shared_ptr<Type> &type)
     -> InitVal;
 
   auto flatten_list(
     const ast::InitListAST &list,
-    std::shared_ptr<Type> type,
+    const std::shared_ptr<Type> &type,
     Value *base_ptr,
     int &idx
   ) -> void;
 
   auto flatten_gb_list(
     const ast::InitListAST &list,
-    std::shared_ptr<Type> type,
+    const std::shared_ptr<Type> &type,
     std::vector<InitVal> &res,
     int &idx
   ) -> void;
@@ -176,6 +177,7 @@ inline auto IRBuilder::visit(const ast::FuncDefAST &ast_func) -> void {
   func->name = ast_func.name;
 
   std::vector<std::shared_ptr<Type>> params_type;
+  params_type.reserve(ast_func.params.size());
   for (auto &p : ast_func.params) {
     params_type.emplace_back(p->type);
   }
@@ -510,9 +512,9 @@ inline auto IRBuilder::visit(const ast::Expr &ast_expr) -> Value * {
   );
 }
 
-inline auto
-IRBuilder::eval_gbinit(const ast::InitVal &init, std::shared_ptr<Type> type)
-  -> InitVal {
+inline auto IRBuilder::eval_gbinit(
+  const ast::InitVal &init, const std::shared_ptr<Type> &type
+) -> InitVal {
   return std::visit(
     overload{
       [&](const ast::Expr &expr) -> InitVal {
@@ -570,14 +572,14 @@ inline auto IRBuilder::visit(const ast::LvalAST &ast_lval) -> Value * {
 
 inline auto IRBuilder::flatten_list(
   const ast::InitListAST &list,
-  std::shared_ptr<Type> type,
+  const std::shared_ptr<Type> &type,
   Value *base_ptr,
   int &idx
 ) -> void {
   if (idx < 0) {
     return;
   }
-  auto get_size = [](std::shared_ptr<Type> t) -> int {
+  auto get_size = [](const std::shared_ptr<Type> &t) -> int {
     return t->is_array() ? std::static_pointer_cast<Array>(t)->size() : 1;
   };
 
@@ -703,7 +705,7 @@ inline auto IRBuilder::flatten_list(
 
 inline auto IRBuilder::flatten_gb_list(
   const ast::InitListAST &list,
-  std::shared_ptr<Type> type,
+  const std::shared_ptr<Type> &type,
   std::vector<InitVal> &res,
   int &idx
 ) -> void {
@@ -711,7 +713,7 @@ inline auto IRBuilder::flatten_gb_list(
     return;
   }
 
-  auto get_size = [](std::shared_ptr<Type> t) -> int {
+  auto get_size = [](const std::shared_ptr<Type> &t) -> int {
     return t->is_array() ? std::static_pointer_cast<Array>(t)->size() : 1;
   };
 
@@ -799,10 +801,12 @@ IRBuilder::eval_arith(ast::BinaryOp op, Constant::Data l, Constant::Data r)
       return (v1 != 0 || v2 != 0) ? 1 : 0;
     }
   } else {
-    float v1 = std::holds_alternative<float>(l) ? std::get<float>(l)
-                                                : static_cast<float>(std::get<int>(l));
-    float v2 = std::holds_alternative<float>(r) ? std::get<float>(r)
-                                                : static_cast<float>(std::get<int>(r));
+    float v1 = std::holds_alternative<float>(l)
+                 ? std::get<float>(l)
+                 : static_cast<float>(std::get<int>(l));
+    float v2 = std::holds_alternative<float>(r)
+                 ? std::get<float>(r)
+                 : static_cast<float>(std::get<int>(r));
     switch (op) {
     case ast::BinaryOp::Add:
       return v1 + v2;
@@ -867,13 +871,14 @@ inline auto push_operand(Op *op, T &&val) -> void {
     op->operands.insert(op->operands.end(), val.begin(), val.end());
   } else {
     if (val != nullptr) {
-      op->operands.emplace_back(val);
+      op->operands.emplace_back(std::forward<T>(val));
     }
   }
 }
 
 template <typename... Args>
-inline auto IRBuilder::emit(OpCode c, std::shared_ptr<Type> rt, Args... args)
+inline auto
+IRBuilder::emit(OpCode c, const std::shared_ptr<Type> &rt, Args &&...args)
   -> Op * {
   Op *op = ctx->make_op(c);
 
@@ -891,9 +896,9 @@ inline auto IRBuilder::emit(OpCode c, std::shared_ptr<Type> rt, Args... args)
 
 template <typename... Args>
 inline auto
-IRBuilder::emit_val(OpCode c, std::shared_ptr<Type> rt, Args... args)
+IRBuilder::emit_val(OpCode c, const std::shared_ptr<Type> &rt, Args &&...args)
   -> Value * {
-  return emit(c, rt, args...)->result;
+  return emit(c, rt, std::forward<Args>(args)...)->result;
 }
 
 } // namespace exodus::high_ir

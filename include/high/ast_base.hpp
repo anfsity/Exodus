@@ -11,7 +11,7 @@ namespace exodus::ast {
 
 // --- Enums ---
 
-enum class BinaryOp {
+enum class BinaryOp : uint8_t {
   Add, // +
   Sub, // -
   Mul, // *
@@ -27,7 +27,7 @@ enum class BinaryOp {
   Or   // ||
 };
 
-enum class UnaryOp {
+enum class UnaryOp : uint8_t {
   Pos, // +
   Neg, // -
   Not  // !
@@ -38,11 +38,23 @@ enum class UnaryOp {
 struct Sourcelocation {
   int line = 0, col = 0;
   virtual ~Sourcelocation() = default;
+
+  Sourcelocation() = default;
+  Sourcelocation(const Sourcelocation &) = default;
+  Sourcelocation &operator=(const Sourcelocation &) = default;
+  Sourcelocation(Sourcelocation &&) = default;
+  Sourcelocation &operator=(Sourcelocation &&) = default;
 };
 
 struct Typed {
   std::shared_ptr<Type> eval_type;
   virtual ~Typed() = default;
+
+  Typed() = default;
+  Typed(const Typed &) = default;
+  Typed &operator=(const Typed &) = default;
+  Typed(Typed &&) = default;
+  Typed &operator=(Typed &&) = default;
 };
 
 // --- Forward Declarations ---

@@ -20,7 +20,7 @@ namespace exodus::high_ir {
 
 struct Op;
 
-enum class ValueKind { Constant, Argument, OpResult, GlobalVar };
+enum class ValueKind : uint8_t { Constant, Argument, OpResult, GlobalVar };
 
 struct Value {
   ValueKind kind;
@@ -28,6 +28,11 @@ struct Value {
 
   Value(ValueKind k, std::shared_ptr<Type> t) : kind(k), type(std::move(t)) {}
   virtual ~Value() = default;
+
+  Value(const Value &) = delete;
+  Value &operator=(const Value &) = delete;
+  Value(Value &&) = delete;
+  Value &operator=(Value &&) = delete;
 
   virtual auto dump() const -> std::string = 0;
 };
@@ -37,7 +42,7 @@ struct Constant : Value {
   Data val;
 
   Constant(std::shared_ptr<Type> t, Data v)
-      : Value(ValueKind::Constant, std::move(t)), val(std::move(v)) {}
+      : Value(ValueKind::Constant, std::move(t)), val(v) {}
 
   auto dump() const -> std::string override {
     if (std::holds_alternative<int>(val)) {
@@ -87,7 +92,7 @@ struct InitVal {
 using Region = std::list<Op *>;
 
 // clang-format off
-enum class OpCode {
+enum class OpCode : uint8_t {
     Add, Sub, Mul, Div, Mod, FAdd, FSub, FMul, FDiv, // arithmetic
     I2F, F2I, ZExt,                                  // transform
     Eq, Ne, Lt, Gt, Le, Ge,                          // compare

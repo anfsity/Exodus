@@ -8,7 +8,7 @@
 namespace exodus::mid_ir {
 
 struct MidModule {
-  high_ir::IRContext *ctx;
+  high_ir::IRContext *ctx = nullptr;
   std::vector<high_ir::GlobalVar *> globals;
   std::vector<std::unique_ptr<LinearFunction>> functions;
 };
@@ -19,7 +19,7 @@ struct Flattener {
 
 private:
   high_ir::Module *old_module;
-  MidModule *new_module;
+  MidModule *new_module = nullptr;
   LinearFunction *cur_func = nullptr;
   Block *cur_block = nullptr;
 
@@ -28,10 +28,10 @@ private:
 
   auto visit(high_ir::Function *f) -> std::unique_ptr<LinearFunction>;
   auto visit(const high_ir::Region &region) -> void;
-  auto create_block(std::string name) -> Block *;
+  auto create_block(const std::string &name) -> Block *;
 };
 
-inline auto Flattener::create_block(std::string name) -> Block * {
+inline auto Flattener::create_block(const std::string &name) -> Block * {
   auto b = std::make_unique<Block>(name + "_" + std::to_string(b_cnt++));
   auto *ptr = b.get();
   cur_func->blocks.push_back(std::move(b));
@@ -77,9 +77,10 @@ inline auto Flattener::visit(high_ir::Function *f)
 inline auto Flattener::visit(const high_ir::Region &region) -> void {
   for (auto *op : region) {
     // 仍然是经过深思熟虑，我决定 mid ir 的 flatten 依赖于 high ir 阶段的优化
-    // flattener 作为构建 mid ir 的核心工具，我希望在构建过程中能够满足一个核心假设
-    // 「high ir 没有多余分支，没有不可达指令，最小化嵌套」
-    // 这样，在 flatten 过程中，就不需要考虑各种特例，为了构建 CFG 而弄得乱七八糟
+    // flattener 作为构建 mid ir
+    // 的核心工具，我希望在构建过程中能够满足一个核心假设 「high ir
+    // 没有多余分支，没有不可达指令，最小化嵌套」 这样，在 flatten
+    // 过程中，就不需要考虑各种特例，为了构建 CFG 而弄得乱七八糟
     switch (op->code) {
     case high_ir::OpCode::If: {
       auto &payload = std::get<high_ir::IfPayload>(op->payload);

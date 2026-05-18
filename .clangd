@@ -1,5 +1,11 @@
 # .clangd
 CompileFlags:
   CompilationDatabase: build
+  Add: [-Wno-unknown-pragmas]
+
 InlayHints:
   Designators: No
+
+Diagnostics:
+  ClangTidy:
+    Add: []

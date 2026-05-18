@@ -18,7 +18,7 @@
 
 namespace exodus::Log {
 
-enum class level { Info, Warn, Error, Fatal };
+enum class level : uint8_t { Info, Warn, Error, Fatal };
 
 // should we use cpo ? ... I dont think so .. im lazy AHHHHH.H.H...
 class logger {
@@ -118,7 +118,7 @@ void with_exception_handling(
   Func &&func, const std::source_location &loc = std::source_location::current()
 ) {
   try {
-    func();
+    std::forward<Func>(func)();
   } catch (const exception &e) {
     fmt::print("caught exception: {}\n", e.what());
     if (!e.stacktrace().empty()) {
@@ -178,7 +178,7 @@ template <typename... Args>
 inline void log_fatal(const char *, Args &&...) noexcept {}
 
 template <typename Func>
-inline void with_exception_handling(Func &&func) {
+inline void with_exception_handling(Func &&func) { // NOLINT
   func();
 }
 

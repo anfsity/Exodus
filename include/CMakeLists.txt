@@ -6,4 +6,3 @@ target_include_directories(headers INTERFACE
 )
 
 target_link_libraries(headers INTERFACE fmt)
-
